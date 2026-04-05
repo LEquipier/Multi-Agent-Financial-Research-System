@@ -139,6 +139,7 @@ async def run_day_pipeline(
     from src.agents.analysis_agent import AnalysisAgent
     from src.agents.base import AgentState
     from src.agents.risk_agent import RiskAgent
+    from src.agents.strategy_selector import StrategySelector
     from src.agents.trading_agent import TradingAgent
     from src.observability.tracer import ExecutionTracer
     from src.services.memory import ShortTermMemory
@@ -189,6 +190,9 @@ async def run_day_pipeline(
     analysis_agent = AnalysisAgent(
         tool_registry=registry, tracer=tracer, memory=memory
     )
+    strategy_selector = StrategySelector(
+        tool_registry=registry, tracer=tracer, memory=memory
+    )
     trading_agent = TradingAgent(
         tool_registry=registry, tracer=tracer, memory=memory
     )
@@ -202,6 +206,7 @@ async def run_day_pipeline(
     # Run pipeline with risk feedback loop
     for i in range(MAX_ITERATIONS):
         state = await analysis_agent.process(state)
+        state = await strategy_selector.process(state)
         state = await trading_agent.process(state)
         state = await risk_agent.process(state)
 
@@ -303,10 +308,14 @@ async def main() -> None:
 
         trade_signal = state.get("trade_signal") or {}
         risk_assessment = state.get("risk_assessment") or {}
+        strategy_ctx = state.get("analysis", {}).get("strategy_context", {})
         action = trade_signal.get("action", "HOLD")
         confidence = trade_signal.get("confidence", 0)
         strategy = trade_signal.get("strategy", "neutral")
         signal_strength = trade_signal.get("signal_strength", "weak")
+        regime = strategy_ctx.get("regime", "unknown")
+        recommended = strategy_ctx.get("recommended_strategy", "neutral")
+        re_entry = strategy_ctx.get("re_entry_eligible", False)
         risk_decision = risk_assessment.get("decision", "approved" if risk_assessment.get("approved") else "rejected")
         approved = risk_assessment.get("approved", False)
         adjustments = risk_assessment.get("adjustments", {})
