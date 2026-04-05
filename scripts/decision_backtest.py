@@ -343,6 +343,9 @@ async def main() -> None:
             "confidence": confidence,
             "strategy": strategy,
             "signal_strength": signal_strength,
+            "regime": regime,
+            "recommended_strategy": recommended,
+            "re_entry_eligible": re_entry,
             "risk_decision": risk_decision,
             "risk_score": risk_assessment.get("risk_score", 0),
             "adjustments": adjustments,
@@ -368,6 +371,7 @@ async def main() -> None:
         elif action != "HOLD" and not approved:
             exec_str = f"  BLOCKED by risk ({risk_decision})"
 
+        print(f"    Regime  : {regime} → {recommended}{'  ★ RE-ENTRY ELIGIBLE' if re_entry else ''}")
         print(f"    Signal  : {action}  conf={confidence:.2f}  strat={strategy}  strength={signal_strength}")
         print(f"    Risk    : {risk_decision}  score={risk_assessment.get('risk_score', 0):.2f}"
               f"{'  adj=' + str(adjustments) if adjustments else ''}")
@@ -477,6 +481,16 @@ async def main() -> None:
     print(f"    HOLD : {hold_count}/{total_days} ({hold_count/total_days*100:.0f}%)")
     print(f"    BUY  : {buy_count}/{total_days} ({buy_count/total_days*100:.0f}%)")
     print(f"    SELL : {sell_count}/{total_days} ({sell_count/total_days*100:.0f}%)")
+
+    # Regime distribution
+    _mini_sep("Regime Distribution")
+    from collections import Counter
+    regime_counts = Counter(d.get("regime", "unknown") for d in decision_log)
+    for reg, cnt in regime_counts.most_common():
+        print(f"    {reg:<15}: {cnt}/{total_days} ({cnt/total_days*100:.0f}%)")
+
+    re_entry_count = sum(1 for d in decision_log if d.get("re_entry_eligible"))
+    print(f"    Re-entry eligible days: {re_entry_count}")
 
     # 2. Confidence distribution
     _mini_sep("Confidence Distribution")
@@ -629,14 +643,15 @@ async def main() -> None:
         # Compact single-line per day
         adj_str = f" adj={rec['adjustments']}" if rec["adjustments"] else ""
         exec_str = f" EXEC@${rec['executed_price']:.2f}" if rec["executed"] else ""
+        re_str = " ★RE" if rec.get("re_entry_eligible") else ""
         print(
             f"  {rec['date']}  ${rec['price']:>7.2f}  "
+            f"{rec.get('regime', '?'):<11}→{rec.get('recommended_strategy', '?'):<15}  "
             f"{rec['action']:>4}  conf={rec['confidence']:.2f}  "
-            f"strat={rec['strategy']:<15}  "
             f"risk={rec['risk_decision']:<9} "
             f"pos={rec['position_before']}→{rec['position_after']}  "
             f"eq=${rec['equity']:>10,.2f}"
-            f"{adj_str}{exec_str}"
+            f"{adj_str}{exec_str}{re_str}"
         )
 
     # Save to file

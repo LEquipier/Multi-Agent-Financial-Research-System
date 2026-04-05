@@ -9,7 +9,7 @@ description = "Production-grade multi-agent financial research and trading simul
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
-authors = [{ name = "Multi-Agent Financial Research Team" }]
+authors = [{ name = "Jackson Liu" }]
 
 dependencies = [
     # LLM & Agent orchestration
