@@ -22,18 +22,19 @@ Available agents and their capabilities:
 - data_agent: Fetch stock prices, price history, company news, company overview
 - research_agent: RAG-based research, news summarization, semantic retrieval
 - analysis_agent: Technical indicators (RSI, MACD, SMA, Bollinger), fundamental analysis
+- strategy_selector: Detect market regime, select optimal strategy, check re-entry eligibility
 - trading_agent: Generate BUY/SELL/HOLD signals with confidence scores
 - risk_agent: Validate trading signals against risk parameters, position limits
 
 Routing rules:
-- Standard flow: data → research → analysis → trading → risk
+- Standard flow: data → research → analysis → strategy → trading → risk
 - If data_sufficient is False: route back to data_agent
 - If risk rejects and iterations remain: route to analysis or trading with feedback
 - If max iterations reached: route to "end"
 - If risk approves: route to "execute"
 
 Respond with JSON: {"next_agent": "<agent_name>", "reasoning": "<why>"}
-Valid next_agent values: data, research, analysis, trading, risk, execute, end
+Valid next_agent values: data, research, analysis, strategy, trading, risk, execute, end
 """
 
     async def process(self, state: AgentState) -> AgentState:
@@ -72,9 +73,14 @@ Valid next_agent values: data, research, analysis, trading, risk, execute, end
                         depends_on=["research"],
                     ),
                     PlanStep(
+                        agent="strategy",
+                        objective="Detect market regime and select strategy",
+                        depends_on=["analysis"],
+                    ),
+                    PlanStep(
                         agent="trading",
                         objective="Generate trade signal",
-                        depends_on=["analysis"],
+                        depends_on=["strategy"],
                     ),
                     PlanStep(
                         agent="risk",
@@ -132,7 +138,7 @@ Valid next_agent values: data, research, analysis, trading, risk, execute, end
             return "end"
 
         # Follow standard flow
-        flow = ["data", "research", "analysis", "trading", "risk"]
+        flow = ["data", "research", "analysis", "strategy", "trading", "risk"]
         if current in flow:
             idx = flow.index(current)
             if idx + 1 < len(flow):

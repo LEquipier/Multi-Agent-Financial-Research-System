@@ -11,6 +11,7 @@ from src.agents.data_agent import DataAgent
 from src.agents.planner import PlannerAgent
 from src.agents.research_agent import ResearchAgent
 from src.agents.risk_agent import RiskAgent
+from src.agents.strategy_selector import StrategySelector
 from src.agents.trading_agent import TradingAgent
 from src.core.config import settings
 from src.core.logging import get_logger
@@ -44,6 +45,7 @@ def build_workflow(
         memory=memory,
     )
     analysis = AnalysisAgent(tool_registry=registry, tracer=tracer, memory=memory)
+    strategy = StrategySelector(tool_registry=registry, tracer=tracer, memory=memory)
     trading = TradingAgent(tool_registry=registry, tracer=tracer, memory=memory)
     risk = RiskAgent(
         trading_engine=trading_engine, tool_registry=registry, tracer=tracer, memory=memory
@@ -57,6 +59,7 @@ def build_workflow(
     graph.add_node("data", data_agent.invoke)
     graph.add_node("research", research.invoke)
     graph.add_node("analysis", analysis.invoke)
+    graph.add_node("strategy", strategy.invoke)
     graph.add_node("trading", trading.invoke)
     graph.add_node("risk", risk.invoke)
     graph.add_node("execute", _execute_trade)
@@ -72,6 +75,7 @@ def build_workflow(
             "data": "data",
             "research": "research",
             "analysis": "analysis",
+            "strategy": "strategy",
             "trading": "trading",
             "risk": "risk",
             "execute": "execute",
@@ -83,6 +87,7 @@ def build_workflow(
     graph.add_edge("data", "planner")
     graph.add_edge("research", "planner")
     graph.add_edge("analysis", "planner")
+    graph.add_edge("strategy", "planner")
     graph.add_edge("trading", "planner")
     graph.add_edge("risk", "planner")
     graph.add_edge("execute", END)
